@@ -1,0 +1,284 @@
+openapi: 3.0.0
+info:
+  title: Event Management System API
+  description: |
+    Welcome to the Event Management API! 👋
+    
+    This API allows you to:
+    1. 🔐 Register and login to your account
+    2. 📅 Create and manage events
+    3. 👥 Share events with other users
+    4. 📚 Track event changes and versions
+    
+    Quick Start:
+    1. Register a new account using /auth/register
+    2. Login to get your access token using /auth/login
+    3. Use the token in the 'Authorization' header for all other requests
+    
+    Need help? Contact support@example.com
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8000
+    description: Development Server
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+        email:
+          type: string
+          format: email
+        username:
+          type: string
+        is_active:
+          type: boolean
+          
+    Event:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        description:
+          type: string
+        start_time:
+          type: string
+          format: date-time
+        end_time:
+          type: string
+          format: date-time
+        location:
+          type: string
+        is_recurring:
+          type: boolean
+        owner_id:
+          type: integer
+        version:
+          type: integer
+          
+    Permission:
+      type: object
+      properties:
+        id:
+          type: integer
+        user_id:
+          type: integer
+        role:
+          type: string
+          enum: [owner, editor, viewer]
+          
+    Error:
+      type: object
+      properties:
+        detail:
+          type: string
+
+paths:
+  /api/auth/register:
+    post:
+      summary: Create a new account
+      description: |
+        Register a new user account. 👤
+        
+        Example request:
+        ```json
+        {
+          "email": "john@example.com",
+          "username": "john_doe",
+          "password": "SecurePass123"
+        }
+        ```
+      tags: [1. Authentication]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, username, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: john@example.com
+                  description: Your email address
+                username:
+                  type: string
+                  example: john_doe
+                  description: Choose a unique username
+                password:
+                  type: string
+                  format: password
+                  example: SecurePass123
+                  description: At least 8 characters with numbers and letters
+      responses:
+        '201':
+          description: ✅ Account created successfully!
+          content:
+            application/json:
+              example:
+                id: 1
+                email: john@example.com
+                username: john_doe
+                is_active: true
+        '400':
+          description: ❌ Registration failed
+          content:
+            application/json:
+              example:
+                detail: "Username already exists"
+
+  /api/auth/login:
+    post:
+      summary: Login to your account
+      description: |
+        Login with your username and password to get an access token. 🔑
+        
+        The access token must be included in all other API requests in the header:
+        ```
+        Authorization: Bearer your_access_token_here
+        ```
+      tags: [1. Authentication]
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [username, password]
+              properties:
+                username:
+                  type: string
+                  example: john_doe
+                  description: Your username
+                password:
+                  type: string
+                  format: password
+                  example: SecurePass123
+                  description: Your password
+      responses:
+        '200':
+          description: ✅ Login successful!
+          content:
+            application/json:
+              example:
+                access_token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                token_type: "bearer"
+        '401':
+          description: ❌ Login failed
+          content:
+            application/json:
+              example:
+                detail: "Incorrect username or password"
+
+  /api/events/batch:
+    post:
+      summary: Create multiple events at once
+      description: |
+        Create up to 100 events in a single request. 📅
+        
+        Example request:
+        ```json
+        [
+          {
+            "title": "Team Meeting 1",
+            "description": "Weekly sync",
+            "start_time": "2025-06-15T10:00:00+05:30",
+            "end_time": "2025-06-15T11:00:00+05:30",
+            "location": "Conference Room A"
+          },
+          {
+            "title": "Team Meeting 2",
+            "description": "Sprint planning",
+            "start_time": "2025-06-16T10:00:00+05:30",
+            "end_time": "2025-06-16T11:00:00+05:30",
+            "location": "Conference Room B"
+          }
+        ]
+        ```
+      tags: [2. Events]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              maxItems: 100
+              items:
+                type: object
+                required: [title, start_time, end_time]
+                properties:
+                  title:
+                    type: string
+                    example: "Team Meeting"
+                    description: Event title
+                  description:
+                    type: string
+                    example: "Weekly sync meeting"
+                    description: Optional event description
+                  start_time:
+                    type: string
+                    format: date-time
+                    example: "2025-06-15T10:00:00+05:30"
+                    description: Event start time (ISO format)
+                  end_time:
+                    type: string
+                    format: date-time
+                    example: "2025-06-15T11:00:00+05:30"
+                    description: Event end time (ISO format)
+                  location:
+                    type: string
+                    example: "Conference Room A"
+                    description: Optional event location
+                  is_recurring:
+                    type: boolean
+                    example: false
+                    description: Whether this is a recurring event
+      responses:
+        '201':
+          description: ✅ Events created successfully!
+          content:
+            application/json:
+              example: [
+                {
+                  "id": 1,
+                  "title": "Team Meeting 1",
+                  "description": "Weekly sync",
+                  "start_time": "2025-06-15T10:00:00+05:30",
+                  "end_time": "2025-06-15T11:00:00+05:30",
+                  "location": "Conference Room A",
+                  "is_recurring": false,
+                  "owner_id": 1,
+                  "version": 1
+                },
+                {
+                  "id": 2,
+                  "title": "Team Meeting 2",
+                  "description": "Sprint planning",
+                  "start_time": "2025-06-16T10:00:00+05:30",
+                  "end_time": "2025-06-16T11:00:00+05:30",
+                  "location": "Conference Room B",
+                  "is_recurring": false,
+                  "owner_id": 1,
+                  "version": 1
+                }
+              ]
+        '400':
+          description: ❌ Failed to create events
+          content:
+            application/json:
+              example:
+                detail: "Batch size exceeds maximum limit of 100 events"
